@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>JWT Login</title>
+  </head>
+  <body>
+    <h2>Register</h2>
+    <form id="registerForm">
+      <input name="username" placeholder="Username" required /><br />
+      <input name="email" placeholder="Email" /><br />
+      <input
+        name="password"
+        placeholder="Password"
+        type="password"
+        required
+      /><br />
+      <button type="submit">Register</button>
+    </form>
+
+    <h2>Login</h2>
+    <form id="loginForm">
+      <input name="username" placeholder="Username" required /><br />
+      <input
+        name="password"
+        placeholder="Password"
+        type="password"
+        required
+      /><br />
+      <button type="submit">Login</button>
+    </form>
+
+    <h3 id="token"></h3>
+    <button id="logout" style="display: none">Logout</button>
+
+    <script>
+      const registerForm = document.getElementById("registerForm");
+      const loginForm = document.getElementById("loginForm");
+      const tokenDisplay = document.getElementById("token");
+      const logoutBtn = document.getElementById("logout");
+
+      registerForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const formData = new FormData(registerForm);
+        const payload = Object.fromEntries(formData);
+        const response = await fetch("http://127.0.0.1:8000/api/register/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        alert(JSON.stringify(data));
+      });
+
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const formData = new FormData(loginForm);
+        const payload = Object.fromEntries(formData);
+
+        const response = await fetch("http://127.0.0.1:8000/api/token/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+        if (data.access) {
+          localStorage.setItem("token", data.access);
+          tokenDisplay.textContent = `Access Token: ${data.access}`;
+          logoutBtn.style.display = "inline";
+          alert("Logged in successfully!");
+        } else {
+          alert(JSON.stringify(data));
+        }
+      });
+
+      logoutBtn.addEventListener("click", () => {
+        localStorage.removeItem("token");
+        tokenDisplay.textContent = "";
+        logoutBtn.style.display = "none";
+      });
+    </script>
+  </body>
+</html>
