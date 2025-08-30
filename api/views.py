@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 
 from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework import generics, status, permissions
 from rest_framework import viewsets
@@ -26,14 +27,26 @@ from django.utils.encoding import force_str
 import sendgrid
 from sendgrid.helpers.mail import Mail
 from django.conf import settings
+from django.shortcuts import get_object_or_404
 
 
 from .permisions import IsOwner
 from .serializers import NoteSerializer
 from .models import Note
 from .serializers import UserRegisterSerializer
+
 from .models import Comment
 from .serializers import CommentSerializer
+
+from .models import Like
+from .serializers import LikeSerializer
+from .models import CommentLike
+from . serializers import CommentLikeSerializer
+
+from .models import Note
+from accounts.models import Follow
+
+from .serializers import NoteFeedSerializer
 
 from .throttles import BurstRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -201,3 +214,86 @@ class LogoutView(APIView):
 
         except TokenError:
             return Response({"error": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        
+        
+# class LikeNoteView(generics.GenericAPIView):
+#     permission_classes = [IsAuthenticated]
+#     serializer_class = LikeSerializer
+    
+#     def post(self, request, pk):
+#         note = get_object_or_404(Note, pk=pk)
+#         user = request.user
+        
+#         if note.likes.filter(id=user.id).exists():
+#             note.likes.remove(user)
+            
+#             return Response(
+#                 {"message": "Unliked", "total_likes": note.likes.count()},
+#                 status=status.HTTP_200_OK,
+#             )
+#         else:
+#             # Not liked yet → Like
+#             note.likes.add(user)
+#             return Response(
+#                 {"message": "Liked", "total_likes": note.likes.count()},
+#                 status=status.HTTP_200_OK,
+#             )
+            
+
+class LikeNoteView(generics.CreateAPIView):
+    queryset = Like.objects.all()
+    serializer_class = LikeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        note_id = self.kwargs.get("pk")
+        user = self.request.user
+
+        # prevent duplicate likes
+        like, created = Like.objects.get_or_create(
+            note_id=note_id,
+            user=user,
+        )
+        if not created:
+            like.delete()  # toggle unlike
+            
+            
+            
+class LikeCommentView(generics.GenericAPIView):
+    queryset = CommentLike.objects.all()
+    serializer_class = CommentLikeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        comment = get_object_or_404(Comment, pk=pk)
+        user = request.user
+
+        # prevent duplicate likes
+        like, created = CommentLike.objects.get_or_create(
+            comment=comment,
+            user=user,
+        )
+        if not created:
+            like.delete()  # toggle unlike
+            return Response({"message": "Unliked comment"}, status=status.HTTP_204_NO_CONTENT)
+
+        return Response({"message": "Liked comment"}, status=status.HTTP_201_CREATED)
+        
+        
+
+
+
+
+class FeedView(ListAPIView):
+    
+    permission_classes = [IsAuthenticated]
+    serializer_class = NoteFeedSerializer
+    
+    def get_queryset(self):
+        # Get all users current user follow
+        following_users = Follow.objects.filter(follower=self.request.user).values_list('following', flat=True)
+        
+        # Fetch notes from those users order by latest
+        
+        return Note.objects.filter(user__in=following_users).order_by("created_at")

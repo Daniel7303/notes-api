@@ -7,6 +7,11 @@ from .views import CommentViewset
 from .views import MyTokenLoginView
 from .views import LogoutView
 
+from .views import LikeNoteView
+
+from .views import LikeCommentView
+
+from .views import FeedView
 
 
 from rest_framework_simplejwt.views import (
@@ -31,6 +36,20 @@ urlpatterns = [
     path('verify-email/<uidb64>/<token>/', VerifyEmailView.as_view(), name='verify-email'),
     path('token/', MyTokenLoginView.as_view(), name='token_obtain_pair'),
     path('logout/', LogoutView.as_view(), name='token_logout'),
+    
+    path("notes/<int:pk>/like/", LikeNoteView.as_view(), name="note-like"),
+    
+    path("comment/<int:pk>/like/", LikeCommentView.as_view(), name="comment-like"),
+    
+    path("feed/", FeedView.as_view(), name="feed"),
+    
+    
+    
+    
+    
+    
+   
+
 
 ]
 

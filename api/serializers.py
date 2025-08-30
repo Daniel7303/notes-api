@@ -5,7 +5,8 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
 from .models import Comment
-
+from .models import Like
+from .models import CommentLike
 
 
 User = get_user_model()
@@ -19,13 +20,28 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = ['id', 'note', 'user', 'text', 'created_at']
         
 
+class LikeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Like
+        fields = "__all__"
+        
+class CommentLikeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommentLike
+        fields = "__all__"
+
 class NoteSerializer(serializers.ModelSerializer):
     user = serializers.ReadOnlyField(source='user.username')
     comments = CommentSerializer(many=True, read_only=True)
     
+    
+    likes_count = serializers.IntegerField(source="likes.count", read_only=True)
+    comments_count = serializers.IntegerField(source="comments.count", read_only=True)
+
+    
     class Meta:
         model = Note
-        fields = ['id', 'user', 'title', 'content', 'created_at', 'total_comment', 'comments']
+        fields = ['id', 'user', 'title', 'content', 'created_at', 'likes_count', 'comments_count', 'comments']
         
     def validate_title(self, value):
         if len(value) < 5:
@@ -47,7 +63,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ['email', 'password', 'password2']
     
-    def validate(seld, data):
+    def validate(self, data):
         if data['password'] != data['password2']:
             raise serializers.ValidationError({"password": 'passwords must match'})
         return data
@@ -73,4 +89,15 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         
         return data
                      
+
+
+class NoteFeedSerializer(serializers.ModelSerializer):
+    author = serializers.CharField(source="user.email")
+    likes_count = serializers.IntegerField(source="likes.count", read_only=True)
+    comments_count = serializers.IntegerField(source="comments.count", read_only=True)
+    
+    class Meta: 
+        model = Note
+        fields = ["id", 'author', 'content', 'likes_count', 'comments_count', 'created_at']
+        
         

@@ -82,7 +82,7 @@ class Follow(models.Model):
         super().save(*args, **kwargs)
         
     def __str__(self):
-        return f"{self.follower} follows (self.following)"
+        return f"{self.follower} follows {self.following}"
     
         
     
