@@ -16,6 +16,8 @@ from .serializers import UserMiniSerializer
 # Create your views here.
 
 
+from .serializers import UserListSerializer
+
 User = get_user_model()
 
 class MeProfileView(generics.RetrieveUpdateAPIView):
@@ -68,3 +70,13 @@ class FollowingListAPIView(ListAPIView):
     def get_queryset(self):
         following_ids = Follow.objects.filter(follower=self.request.user).values_list('following_id', flat=True)
         return User.objects.filter(id__in=following_ids)
+
+
+class UserListView(generics.ListAPIView):
+    # serializer_class = UserListSerializer
+    # permission_classes = [IsAuthenticated]
+    queryset = User.objects.all()
+    serializer_class = UserListSerializer
+    
+    
+    

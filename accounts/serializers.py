@@ -1,4 +1,4 @@
-from rest_framework import serializers
+from rest_framework import serializers, generics
 from django.contrib.auth import get_user_model
 from .models import Profile
 from .models import Follow
@@ -60,3 +60,12 @@ class ProfileSerializer(serializers.ModelSerializer):
             return False
         return Follow.objects.filter(follower=request.user, following=obj.user).exists()
 
+
+
+
+# Get all user list, id included
+class UserListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'email']
+        

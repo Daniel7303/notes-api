@@ -286,14 +286,14 @@ class LikeCommentView(generics.GenericAPIView):
 
 
 class FeedView(ListAPIView):
-    
     permission_classes = [IsAuthenticated]
     serializer_class = NoteFeedSerializer
-    
+
     def get_queryset(self):
-        # Get all users current user follow
-        following_users = Follow.objects.filter(follower=self.request.user).values_list('following', flat=True)
-        
-        # Fetch notes from those users order by latest
-        
-        return Note.objects.filter(user__in=following_users).order_by("created_at")
+        # Get all users current user follows
+        following_users = Follow.objects.filter(
+            follower=self.request.user
+        ).values_list("following", flat=True)
+
+        # Fetch notes from those users, order by latest
+        return Note.objects.filter(user__in=following_users).order_by("-created_at")
