@@ -3,6 +3,13 @@ from django.db import models
 from django.conf import settings
 
 
+# from algoliasearch_django import AlgoliaIndex
+# from algoliasearch_django.decorators import register
+
+from accounts.models import Profile
+
+
+
 # Create your models here.
 
 class Note(models.Model):
@@ -51,4 +58,18 @@ class CommentLike(models.Model):
     def __str__(self):
         return str(self.user)
 
+    
+    
+# # Chart feature with Algolia
+
+# @register(Note)
+# class PostIndex(AlgoliaIndex):
+#     fields = ('id', 'content', 'created_at')
+#     settings = {'serachableAttributes': ['content']}
+    
+
+# @register(Profile)
+# class PostIndex(AlgoliaIndex):
+#     fields = ('id', 'content', 'created_at')
+#     settings = {'searchableAttributes': ['user__username', 'bio']}
     

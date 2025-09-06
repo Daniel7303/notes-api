@@ -57,25 +57,35 @@ class NoteSerializer(serializers.ModelSerializer):
 
 class UserRegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
-    password2 = serializers.CharField(write_only=True, label="Comfirm Password")
-    
+    password2 = serializers.CharField(write_only=True, label="Confirm Password")
+
+    # 🚨 Disable DRF's default UniqueValidator
+    email = serializers.EmailField(validators=[])
+
     class Meta:
         model = User
         fields = ['email', 'password', 'password2']
-    
+
+    def validate_email(self, value):
+        # Check if user already exists
+        user = User.objects.filter(email=value).first()
+        if user and user.is_active:
+            raise serializers.ValidationError("A user with this email already exists and is verified.")
+        return value
+
     def validate(self, data):
         if data['password'] != data['password2']:
-            raise serializers.ValidationError({"password": 'passwords must match'})
+            raise serializers.ValidationError({"password": 'Passwords must match'})
         return data
-        
+
     def create(self, validated_data):
         validated_data.pop('password2')
         password = validated_data.pop('password')
-        is_active = validated_data.pop('is_active', True)  # get it safely
-        
+        is_active = validated_data.pop('is_active', False)  # default inactive
+
         user = User(**validated_data)
         user.set_password(password)
-        user.is_active = is_active  # ✅ this now works
+        user.is_active = is_active
         user.save()
         return user
 

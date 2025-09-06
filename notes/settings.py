@@ -12,8 +12,15 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 from pathlib import Path
 import os
+import environ
+
+from decouple import config
+
 from dotenv import load_dotenv
 load_dotenv()
+
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -45,6 +52,9 @@ INSTALLED_APPS = [
     
     'api',
     'accounts',
+    
+    # "api.apps.NotesConfig",
+    "algoliasearch_django",
 ]
 
 MIDDLEWARE = [
@@ -102,10 +112,37 @@ DATABASES = {
     }
 }
 
+# Initialise environment variables
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
+
 # Email settings
 
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@example.com")
+# EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+# DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@example.com")
+
+
+EMAIL_BACKEND = env("EMAIL_BACKEND")
+EMAIL_HOST = env("EMAIL_HOST")
+EMAIL_PORT = env.int("EMAIL_PORT")
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
+
+#Sendgrid
+
+# EMAIL_BACKEND = env("EMAIL_BACKEND")
+# EMAIL_HOST = env("EMAIL_HOST")
+# EMAIL_PORT = env.int("EMAIL_PORT")
+# EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS")
+# EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+# EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+# DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
+
+
+
 
 
 
@@ -192,6 +229,17 @@ REST_FRAMEWORK = {
         'burst': '5/second',
     }
 }
+
+
+
+ALGOLIA = {
+    "APPLICATION_ID": env("ALGOLIA_APPLICATION_ID", default=""),
+    "API_KEY": env("ALGOLIA_API_KEY", default=""),
+    "INDEX_PREFIX": env("ALGOLIA_INDEX_PREFIX", default="dev"),
+    "RAISE_EXCEPTIONS": True,
+}
+
+
 
 
 SIMPLE_JWT = {

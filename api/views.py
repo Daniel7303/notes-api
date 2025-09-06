@@ -1,7 +1,9 @@
 from django.shortcuts import render, redirect
 from django.shortcuts import HttpResponse
 
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+
 from django.conf import settings
 
 from rest_framework.views import APIView
@@ -24,6 +26,7 @@ from django.contrib.auth.tokens import default_token_generator
 from rest_framework.views import APIView
 from django.utils.encoding import force_str
 
+from algoliasearch_django import raw_search
 import sendgrid
 from sendgrid.helpers.mail import Mail
 from django.conf import settings
@@ -48,6 +51,8 @@ from accounts.models import Follow
 
 from .serializers import NoteFeedSerializer
 
+from accounts.models import Profile
+
 from .throttles import BurstRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
@@ -57,6 +62,9 @@ from .serializers import MyTokenObtainPairSerializer
 
 
 # Create your views here.
+
+
+User = get_user_model()
 
 
 class NoteViewSet(viewsets.ModelViewSet):
@@ -93,102 +101,174 @@ class CommentViewset(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
     
 
-# def send_verification_email_sendgrid(user, request):
-#     from django.utils.http import urlsafe_base64_encode
-#     from django.utils.encoding import force_bytes
-#     from django.contrib.auth.tokens import default_token_generator
-#     from django.contrib.sites.shortcuts import get_current_site
-
-#     uid = urlsafe_base64_encode(force_bytes(user.pk))
-#     token = default_token_generator.make_token(user)
-#     current_site = get_current_site(request)
-#     verification_link = f"http://{current_site.domain}/api/verify-email/{uid}/{token}/"
-
-#     message = Mail(
-#         from_email=settings.DEFAULT_FROM_EMAIL,
-#         to_emails=user.email,
-#         subject="Verify your email",
-#         plain_text_content=f"Click the link to verify your email:\n{verification_link}",
-#     )
-
-#     try:
-#         sg = sendgrid.SendGridAPIClient(api_key=settings.SENDGRID_API_KEY)
-#         response = sg.send(message)
-#         print(f"✅ Email sent to {user.email}. Status code: {response.status_code}")
-#     except Exception as e:
-#         print("❌ Failed to send email via SendGrid:", e)
 
     
+# class RegisterView(generics.CreateAPIView):
+#     serializer_class = UserRegisterSerializer  
+
+#     def perform_create(self, serializer):
+#         # Save user but keep inactive
+#         user = serializer.save(is_active=False)
+#         self.send_verification_email(user)
+
+#     def send_verification_email(self, user):
+#         uid = urlsafe_base64_encode(force_bytes(user.pk))
+#         token = default_token_generator.make_token(user)
+
+#         # Use request host, not Sites framework
+#         domain = self.request.get_host()
+#         verification_link = f"http://{domain}/api/verify-email/{uid}/{token}/"
+
+#         email = EmailMessage(
+#             subject="Verify your email",
+#             body=f"Click the link to activate your account: {verification_link}",
+#             to=[user.email]
+#         )
+#         email.send(fail_silently=False)
+
+#     def create(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         self.perform_create(serializer)
+
+#         return Response(
+#             {"detail": "Account created. Check your email to verify your account."},
+#             status=status.HTTP_201_CREATED
+#         )
+
+
+from django.contrib.auth import get_user_model
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.contrib.sites.shortcuts import get_current_site
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import EmailMessage
+from rest_framework import generics, status
+from rest_framework.response import Response
+
+
 class RegisterView(generics.CreateAPIView):
-    serializer_class = UserRegisterSerializer  # DRF serializer for registration
+    serializer_class = UserRegisterSerializer
 
     def perform_create(self, serializer):
-        # Save user but don't activate yet
-        user = serializer.save(is_active=False)
-        self.send_verification_email(user)
-        # send_verification_email_sendgrid(user, self.request)
-    
+        validated_data = serializer.validated_data  
 
-    def send_verification_email(self, user):
-        # Create email verification token and encoded UID
-        uid = urlsafe_base64_encode(force_bytes(user.pk))  # Encodes user ID to base64
-        token = default_token_generator.make_token(user)  # Create time-limited secure token
+        # Extract password safely
+        password = validated_data.pop("password")
+        validated_data.pop("password2", None)
 
-        # Get the current site domain to use in the email link
+        # Check if email already exists
+        existing_user = User.objects.filter(email=validated_data["email"]).first()
+
+        if existing_user:
+            if existing_user.is_active:
+                # Case 1: Email already verified/active → stop
+                raise serializers.ValidationError(
+                    {"email": "A user with this email already exists and is verified."}
+                )
+            else:
+                # Case 2: User exists but not active → resend verification
+                user = existing_user
+                user.set_password(password)
+                user.save()
+                print("Resending verification email to inactive user:", user.email)
+        else:
+            # Case 3: Create new inactive user
+            user = User(**validated_data)
+            user.is_active = False
+            user.set_password(password)
+            user.save()
+
+        # Always send verification email
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
         current_site = get_current_site(self.request)
-
-        # Build the verification link
         verification_link = f"http://{current_site.domain}/api/verify-email/{uid}/{token}/"
-
-        # Send the email
         email = EmailMessage(
             subject="Verify your email",
             body=f"Click the link to activate your account: {verification_link}",
             to=[user.email]
         )
-        
+
         try:
-            email.send()
-            print("Sending verification email to:", user.email)
+            email.send(fail_silently=False)
         except Exception as e:
-            print("Failed to send email:", e)
+            print("Email sending failed:", e)
+            raise serializers.ValidationError(
+                {"email": "Could not send verification email. Please try again."}
+            )
+
+        return user  # return user for `create()`
 
     def create(self, request, *args, **kwargs):
-        # This method is triggered on POST to /register/
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        user = self.perform_create(serializer)
 
         return Response(
-            {"detail": "Account created. Check your email to verify your account."},
+            {"message": f"Account created for {user.email}. Check your email to verify your account."},
             status=status.HTTP_201_CREATED
         )
 
-        
 
 
 
+# class VerifyEmailView(APIView):
+#     def get(self, request, uidb64, token):
+#         try:
+#             uid = urlsafe_base64_decode(uidb64).decode()
+#             user = User.objects.get(pk=uid)
+#         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+#             return HttpResponse("Invalid user.", status=400)
+
+#         # Validate token
+#         if default_token_generator.check_token(user, token):
+#             user.is_active = True
+#             user.save()
+#             auth_token, _ = Token.objects.get_or_create(user=user)
+#             return HttpResponse(f"Email verified successfully")
+#         else:
+#             return HttpResponse(
+#                 f"Invalid or expired verification link for user {user.pk}.",
+#                 status=400
+#             )
+
+
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.response import Response
+from rest_framework import status
 
 class VerifyEmailView(APIView):
     def get(self, request, uidb64, token):
         try:
-            # Decode the UID from base64 and get user
-            uid = force_str(urlsafe_base64_decode(uidb64))
-            user = User.objects.get(pk=uid)
+            uid = urlsafe_base64_decode(uidb64).decode()
+            user = get_user_model().objects.get(pk=uid)
 
-            # Check if the token is valid for this user
             if default_token_generator.check_token(user, token):
-                user.is_active = True  # Activate user
+                user.is_active = True
                 user.save()
 
-                # Create or get a token (DRF token auth)
-                token, _ = Token.objects.get_or_create(user=user)
+                # Create JWT tokens
+                refresh = RefreshToken.for_user(user)
 
-                return HttpResponse(f"Email verified. Token: {token.key}")
+                return Response(
+                    {
+                        "detail": "Email verified successfully.",
+                        "access": str(refresh.access_token),
+                        "refresh": str(refresh)
+                    },
+                    status=status.HTTP_200_OK
+                )
             else:
-                return HttpResponse("Invalid or expired verification link.")
+                return Response({"detail": "Invalid or expired verification link."}, status=status.HTTP_400_BAD_REQUEST)
+
+        except get_user_model().DoesNotExist:
+            return Response({"detail": "Invalid user."}, status=status.HTTP_400_BAD_REQUEST)
+
         except Exception as e:
-            return HttpResponse("Verification failed.")
+            print("Verification error:", e)
+            return Response({"detail": "Verification failed."}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
         
@@ -216,29 +296,7 @@ class LogoutView(APIView):
             return Response({"error": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST)
         
         
-        
-# class LikeNoteView(generics.GenericAPIView):
-#     permission_classes = [IsAuthenticated]
-#     serializer_class = LikeSerializer
-    
-#     def post(self, request, pk):
-#         note = get_object_or_404(Note, pk=pk)
-#         user = request.user
-        
-#         if note.likes.filter(id=user.id).exists():
-#             note.likes.remove(user)
-            
-#             return Response(
-#                 {"message": "Unliked", "total_likes": note.likes.count()},
-#                 status=status.HTTP_200_OK,
-#             )
-#         else:
-#             # Not liked yet → Like
-#             note.likes.add(user)
-#             return Response(
-#                 {"message": "Liked", "total_likes": note.likes.count()},
-#                 status=status.HTTP_200_OK,
-#             )
+
             
 
 class LikeNoteView(generics.CreateAPIView):
@@ -297,3 +355,17 @@ class FeedView(ListAPIView):
 
         # Fetch notes from those users, order by latest
         return Note.objects.filter(user__in=following_users).order_by("-created_at")
+    
+    
+    
+    class SearchApiView(APIView):
+        def get(self, request):
+            query = request.Get.get('q', '')
+            results = raw_search(Note, query)
+            return Response(results)
+        
+        def get(self, request):
+            query = request.Get.get('q', '')
+            results = raw_search(Profile, query)
+            
+            return Response(results)

@@ -53,7 +53,7 @@ class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
     bio = models.TextField(blank=True, null=True)
     location = models.CharField(max_length=100, blank=True, null=True)
-    birth_date = models.CharField(blank=True, null=True)
+    birth_date = models.DateTimeField(blank=True, null=True)
     avatar = models.ImageField(upload_to=avatar_upload_to, blank=True, null=True)
     
     
