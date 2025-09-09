@@ -11,6 +11,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework import generics, status, permissions
 from rest_framework import viewsets
+from rest_framework import serializers
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.permissions import AllowAny
@@ -64,6 +65,24 @@ from .serializers import MyTokenObtainPairSerializer
 # Create your views here.
 
 
+# from django.contrib.auth import get_user_model
+# from django.utils.http import urlsafe_base64_encode
+# from django.utils.encoding import force_bytes
+# from django.contrib.sites.shortcuts import get_current_site
+# from django.contrib.auth.tokens import default_token_generator
+# from django.core.mail import EmailMessage
+# from rest_framework import generics, status
+# from rest_framework.response import Response
+
+
+# from rest_framework_simplejwt.tokens import RefreshToken
+# from rest_framework.response import Response
+# from rest_framework import status
+
+
+
+
+
 User = get_user_model()
 
 
@@ -102,49 +121,6 @@ class CommentViewset(viewsets.ModelViewSet):
     
 
 
-    
-# class RegisterView(generics.CreateAPIView):
-#     serializer_class = UserRegisterSerializer  
-
-#     def perform_create(self, serializer):
-#         # Save user but keep inactive
-#         user = serializer.save(is_active=False)
-#         self.send_verification_email(user)
-
-#     def send_verification_email(self, user):
-#         uid = urlsafe_base64_encode(force_bytes(user.pk))
-#         token = default_token_generator.make_token(user)
-
-#         # Use request host, not Sites framework
-#         domain = self.request.get_host()
-#         verification_link = f"http://{domain}/api/verify-email/{uid}/{token}/"
-
-#         email = EmailMessage(
-#             subject="Verify your email",
-#             body=f"Click the link to activate your account: {verification_link}",
-#             to=[user.email]
-#         )
-#         email.send(fail_silently=False)
-
-#     def create(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         self.perform_create(serializer)
-
-#         return Response(
-#             {"detail": "Account created. Check your email to verify your account."},
-#             status=status.HTTP_201_CREATED
-#         )
-
-
-from django.contrib.auth import get_user_model
-from django.utils.http import urlsafe_base64_encode
-from django.utils.encoding import force_bytes
-from django.contrib.sites.shortcuts import get_current_site
-from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import EmailMessage
-from rest_framework import generics, status
-from rest_framework.response import Response
 
 
 class RegisterView(generics.CreateAPIView):
@@ -211,32 +187,6 @@ class RegisterView(generics.CreateAPIView):
         )
 
 
-
-
-# class VerifyEmailView(APIView):
-#     def get(self, request, uidb64, token):
-#         try:
-#             uid = urlsafe_base64_decode(uidb64).decode()
-#             user = User.objects.get(pk=uid)
-#         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-#             return HttpResponse("Invalid user.", status=400)
-
-#         # Validate token
-#         if default_token_generator.check_token(user, token):
-#             user.is_active = True
-#             user.save()
-#             auth_token, _ = Token.objects.get_or_create(user=user)
-#             return HttpResponse(f"Email verified successfully")
-#         else:
-#             return HttpResponse(
-#                 f"Invalid or expired verification link for user {user.pk}.",
-#                 status=400
-#             )
-
-
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.response import Response
-from rest_framework import status
 
 class VerifyEmailView(APIView):
     def get(self, request, uidb64, token):

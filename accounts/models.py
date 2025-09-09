@@ -51,6 +51,7 @@ def avatar_upload_to(instance, filename):
 class Profile(models.Model):
     
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    name = models.CharField(blank=True, null=True, max_length=50)
     bio = models.TextField(blank=True, null=True)
     location = models.CharField(max_length=100, blank=True, null=True)
     birth_date = models.DateTimeField(blank=True, null=True)

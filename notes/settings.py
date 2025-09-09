@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'accounts',
     
     # "api.apps.NotesConfig",
+    
     "algoliasearch_django",
 ]
 
@@ -236,7 +237,7 @@ ALGOLIA = {
     "APPLICATION_ID": env("ALGOLIA_APPLICATION_ID", default=""),
     "API_KEY": env("ALGOLIA_API_KEY", default=""),
     "INDEX_PREFIX": env("ALGOLIA_INDEX_PREFIX", default="dev"),
-    "RAISE_EXCEPTIONS": True,
+    # "RAISE_EXCEPTIONS": True,
 }
 
 
