@@ -35,6 +35,8 @@ from django.shortcuts import get_object_or_404
 
 
 from .permisions import IsOwner
+from rest_framework.decorators import action
+
 from .serializers import NoteSerializer
 from .models import Note
 from .serializers import UserRegisterSerializer
@@ -69,25 +71,22 @@ User = get_user_model()
 
 
 class NoteViewSet(viewsets.ModelViewSet):
-    queryset = Note.objects.all().order_by('created_at')
-    
-    note = Note.objects.get(id=1)
-    note.total_comment()
-    
+    queryset = Note.objects.all().order_by('-created_at')
     serializer_class = NoteSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     search_fields = ['title', 'content']
-    
-    
-    # permission_classes = [AllowAny]
     permission_classes = [permissions.IsAuthenticated, IsOwner]
-    
+
     def get_queryset(self):
         return Note.objects.filter(user=self.request.user).order_by("-created_at")
-    
-    
+
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=["get"])
+    def comments_count(self, request, pk=None):
+        note = self.get_object()  # fetch the note by pk
+        return Response({"total_comments": note.total_comment()})
     
     
 class CommentViewset(viewsets.ModelViewSet):

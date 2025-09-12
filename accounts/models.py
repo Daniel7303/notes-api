@@ -11,15 +11,21 @@ class CustomUserManager(BaseUserManager):
         if not email:
             raise ValueError("email is required")
         email = self.normalize_email(email)
+
+        # keep normal users inactive until they verify
+        extra_fields.setdefault('is_active', False)
+
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
-        user.save(using=self.db)
-        
-    
+        user.save(using=self._db)
+        return user   # 🔥 important, you forgot this
+
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)  # superusers must be active
         return self.create_user(email, password, **extra_fields)
+
     
     
 
@@ -54,7 +60,7 @@ class Profile(models.Model):
     name = models.CharField(blank=True, null=True, max_length=50)
     bio = models.TextField(blank=True, null=True)
     location = models.CharField(max_length=100, blank=True, null=True)
-    birth_date = models.DateTimeField(blank=True, null=True)
+    birth_date = models.DateField(null=True, blank=True)
     avatar = models.ImageField(upload_to=avatar_upload_to, blank=True, null=True)
     
     
