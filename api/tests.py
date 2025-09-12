@@ -19,7 +19,7 @@ class NoteAPITestCase(APITestCase):
             "email": "test@example.com",
             "password": "password123"
         })
-        print("LOGIN RESPONSE:", response.status_code, response.data)|quitqqqqqqqqqqq                                                                                                                                                                                                                                                                                                                               
+        print("LOGIN RESPONSE:", response.status_code, response.data)                                                                                                                                                                                                                                                                                                                             
         self.token = response.data.get("access")
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
 
